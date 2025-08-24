@@ -28,7 +28,24 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $user = Auth::user();
+
+        // Validasi status akun
+        if ($user->is_active === false) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => 'Akun Anda sedang dalam status nonaktif. Silakan hubungi administrator.',
+            ])->onlyInput('email');
+        }
+
+        if ($user->role == 'admin') {
+            return redirect()->intended(route('admin.dashboard'));
+        } elseif ($user->role == 'kasir') {
+            return redirect()->intended(route('kasir.dashboard'));
+        }
     }
 
     /**

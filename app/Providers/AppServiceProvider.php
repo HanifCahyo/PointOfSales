@@ -4,6 +4,15 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 
+use App\Models\Product;
+use App\Models\Transaction;
+use App\Models\StockMovement;
+use App\Models\StockOpname;
+use App\Observers\ProductObserver;
+use App\Observers\TransactionObserver;
+use App\Observers\StockMovementObserver;
+use App\Observers\StockOpnameObserver;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -19,6 +28,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Product::observe(ProductObserver::class);
+        Transaction::observe(TransactionObserver::class);
+        StockMovement::observe(StockMovementObserver::class);
+        StockOpname::observe(StockOpnameObserver::class);
     }
 }

@@ -6,5 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    protected $fillable = ['name', 'sku', 'stock', 'price'];
+    protected $fillable = ['code', 'name', 'price', 'stock', 'category_id', 'status'];
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function stockMovements()
+    {
+        return $this->hasMany(StockMovement::class);
+    }
 }

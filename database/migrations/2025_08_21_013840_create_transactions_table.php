@@ -12,9 +12,11 @@ return new class extends Migration {
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
-            $table->string('invoice_number')->unique();
-            $table->dateTime('date');
-            $table->decimal('total_price', 12, 2);
+            $table->string('invoice_no', 30)->unique();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->decimal('total_amount', 12, 2);
+            $table->enum('payment_method', ['cash', 'card', 'ewallet'])->nullable();
+            $table->enum('status', ['completed', 'pending', 'refunded'])->default('completed');
             $table->timestamps();
         });
     }
