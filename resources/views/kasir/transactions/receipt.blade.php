@@ -191,20 +191,148 @@
         }
 
         @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
             body {
-                background: white;
-                padding: 0;
-                width: 58mm;
+                background: white !important;
+                padding: 5mm !important;
+                width: 58mm !important;
+                margin: 0 !important;
+                font-size: 10px !important;
+                font-family: 'Courier New', monospace !important;
             }
 
             .receipt-container {
-                box-shadow: none;
-                border-radius: 0;
-                padding: 5px;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                width: 100% !important;
+            }
+
+            .header {
+                text-align: center !important;
+                margin-bottom: 10px !important;
+                border-bottom: 2px dashed #333 !important;
+                padding-bottom: 8px !important;
+            }
+
+            .store-name {
+                font-size: 14px !important;
+                font-weight: bold !important;
+                margin-bottom: 3px !important;
+            }
+
+            .store-info {
+                font-size: 9px !important;
+                color: #333 !important;
+                margin-bottom: 5px !important;
+            }
+
+            .receipt-title {
+                font-size: 12px !important;
+                font-weight: bold !important;
+                margin-bottom: 3px !important;
+            }
+
+            .transaction-info {
+                margin-bottom: 10px !important;
+                font-size: 9px !important;
+            }
+
+            .info-row {
+                display: flex !important;
+                justify-content: space-between !important;
+                margin-bottom: 2px !important;
+            }
+
+            .separator {
+                border-top: 2px dashed #333 !important;
+                margin: 8px 0 !important;
+            }
+
+            .item {
+                margin-bottom: 5px !important;
+                padding-bottom: 3px !important;
+                border-bottom: 1px dotted #ccc !important;
+            }
+
+            .item-name {
+                font-weight: bold !important;
+                font-size: 9px !important;
+                margin-bottom: 2px !important;
+            }
+
+            .item-details {
+                display: flex !important;
+                justify-content: space-between !important;
+                font-size: 8px !important;
+            }
+
+            .total-section {
+                margin-bottom: 10px !important;
+            }
+
+            .total-row {
+                display: flex !important;
+                justify-content: space-between !important;
+                margin-bottom: 3px !important;
+                font-size: 9px !important;
+            }
+
+            .grand-total {
+                font-size: 12px !important;
+                font-weight: bold !important;
+                border-top: 2px solid #333 !important;
+                border-bottom: 2px solid #333 !important;
+                padding: 5px 0 !important;
+                margin: 8px 0 !important;
+            }
+
+            .barcode {
+                text-align: center !important;
+                margin: 8px 0 !important;
+                font-family: 'Courier New', monospace !important;
+                font-size: 6px !important;
+                letter-spacing: 1px !important;
+            }
+
+            .footer {
+                text-align: center !important;
+                margin-top: 10px !important;
+                border-top: 2px dashed #333 !important;
+                padding-top: 8px !important;
+            }
+
+            .thank-you {
+                font-size: 10px !important;
+                font-weight: bold !important;
+                margin-bottom: 3px !important;
+            }
+
+            .footer-note {
+                font-size: 7px !important;
+                color: #333 !important;
+                line-height: 1.2 !important;
+                margin-bottom: 8px !important;
+            }
+
+            .timestamp {
+                font-size: 8px !important;
+                color: #333 !important;
             }
 
             .action-buttons {
-                display: none;
+                display: none !important;
+            }
+
+            @page {
+                size: 58mm auto;
+                margin: 0 !important;
             }
         }
 
@@ -221,7 +349,7 @@
     <div class="receipt-container">
         <!-- Header -->
         <div class="header">
-            <div class="store-name">{{ config('', 'Point Of Sales') }}</div>
+            <div class="store-name">{{ config('app.name', 'Point Of Sales') }}</div>
             <div class="store-info">
                 Jl. Contoh No. 123, Kota<br>
                 Telp: (021) 1234-5678
@@ -302,7 +430,7 @@
 
         <!-- Action Buttons (hidden when printed) -->
         <div class="action-buttons">
-            <button onclick="window.print()" class="btn btn-primary">
+            <button id="print-btn" class="btn btn-primary">
                 🖨️ Cetak
             </button>
             <a href="{{ route('kasir.transactions.index') }}" class="btn btn-secondary">
@@ -312,17 +440,275 @@
     </div>
 
     <script>
+        // Enhanced print function with paper size detection
+        function smartPrint() {
+            // Try to detect if thermal printer is available
+            if (navigator.userAgent.includes('Android') || navigator.userAgent.includes('iPhone')) {
+                // Mobile - suggest thermal printing
+                if (confirm(
+                        'Print ke thermal printer (58mm)?\nPilih "OK" untuk thermal atau "Cancel" untuk printer biasa.')) {
+                    printThermal();
+                } else {
+                    window.print();
+                }
+            } else {
+                // Desktop - show options
+                const choice = confirm('Pilih ukuran kertas:\n\nOK = Thermal Receipt (58mm)\nCancel = Printer Biasa (A4)');
+                if (choice) {
+                    printThermal();
+                } else {
+                    printRegular();
+                }
+            }
+        }
+
+        // Thermal printer optimized
+        function printThermal() {
+            const printContent = document.querySelector('.receipt-container').cloneNode(true);
+
+            // Remove action buttons
+            const actionButtons = printContent.querySelector('.action-buttons');
+            if (actionButtons) {
+                actionButtons.remove();
+            }
+
+            const printStyles = `
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                    -webkit-print-color-adjust: exact;
+                    color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+
+                @page {
+                    size: 58mm auto;
+                    margin: 0;
+                }
+
+                body {
+                    width: 58mm;
+                    font-size: 10px;
+                    font-family: 'Courier New', monospace;
+                    margin: 0;
+                    padding: 2mm;
+                    background: white;
+                    color: black;
+                    line-height: 1.3;
+                }
+
+                .receipt-container {
+                    padding: 0;
+                    box-shadow: none;
+                    border-radius: 0;
+                    background: white;
+                    width: 100%;
+                }
+
+                .header {
+                    text-align: center;
+                    margin-bottom: 8px;
+                    border-bottom: 2px dashed black;
+                    padding-bottom: 5px;
+                }
+
+                .store-name {
+                    font-size: 12px;
+                    font-weight: bold;
+                    margin-bottom: 2px;
+                }
+
+                .store-info {
+                    font-size: 8px;
+                    margin-bottom: 3px;
+                }
+
+                .receipt-title {
+                    font-size: 10px;
+                    font-weight: bold;
+                }
+
+                .transaction-info {
+                    margin-bottom: 8px;
+                    font-size: 8px;
+                }
+
+                .info-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 1px;
+                }
+
+                .separator {
+                    border-top: 1px dashed black;
+                    margin: 5px 0;
+                }
+
+                .item {
+                    margin-bottom: 4px;
+                    padding-bottom: 2px;
+                    border-bottom: 1px dotted #999;
+                }
+
+                .item-name {
+                    font-weight: bold;
+                    font-size: 8px;
+                    margin-bottom: 1px;
+                }
+
+                .item-details {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 7px;
+                }
+
+                .total-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 2px;
+                    font-size: 8px;
+                }
+
+                .grand-total {
+                    font-size: 10px;
+                    font-weight: bold;
+                    border-top: 2px solid black;
+                    border-bottom: 2px solid black;
+                    padding: 3px 0;
+                    margin: 5px 0;
+                }
+
+                .barcode {
+                    text-align: center;
+                    margin: 5px 0;
+                    font-size: 6px;
+                    letter-spacing: 1px;
+                }
+
+                .footer {
+                    text-align: center;
+                    margin-top: 8px;
+                    border-top: 2px dashed black;
+                    padding-top: 5px;
+                }
+
+                .thank-you {
+                    font-size: 8px;
+                    font-weight: bold;
+                    margin-bottom: 2px;
+                }
+
+                .footer-note {
+                    font-size: 6px;
+                    line-height: 1.2;
+                    margin-bottom: 5px;
+                }
+
+                .timestamp {
+                    font-size: 7px;
+                }
+            </style>
+        `;
+
+            const printWindow = window.open('', '_blank', 'width=400,height=600');
+
+            if (!printWindow) {
+                alert('Pop-up terblokir. Mohon izinkan pop-up untuk mencetak.');
+                return;
+            }
+
+            printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Thermal Print - ${document.title}</title>
+                <meta charset="UTF-8">
+                ${printStyles}
+            </head>
+            <body>
+                ${printContent.outerHTML}
+            </body>
+            </html>
+        `);
+
+            printWindow.document.close();
+            printWindow.focus();
+
+            printWindow.onload = function() {
+                setTimeout(() => {
+                    printWindow.print();
+                    setTimeout(() => printWindow.close(), 1000);
+                }, 300);
+            };
+        }
+        // Regular printer (A4)
+        function printRegular() {
+            const printStyles = `
+                <style>
+                    @page {
+                        size: A4;
+                        margin: 20mm;
+                    }
+                    body {
+                        width: auto !important;
+                        max-width: 80mm;
+                        margin: 0 auto !important;
+                        background: white !important;
+                    }
+                    .action-buttons { display: none !important; }
+                </style>
+            `;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Print - ${document.title}</title>
+                    <meta charset="UTF-8">
+                    ${printStyles}
+                </head>
+                <body>
+                    ${document.querySelector('.receipt-container').outerHTML}
+                </body>
+                </html>
+            `);
+
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+        }
+
         // Auto focus and keyboard shortcuts
         document.addEventListener('keydown', function(e) {
-            // Ctrl + P for print
+            // Ctrl + P for smart print
             if (e.ctrlKey && e.key === 'p') {
                 e.preventDefault();
-                window.print();
+                smartPrint();
+            }
+            // Ctrl + Shift + P for thermal print
+            else if (e.ctrlKey && e.shiftKey && e.key === 'P') {
+                e.preventDefault();
+                printThermal();
             }
             // Escape to go back
             else if (e.key === 'Escape') {
                 e.preventDefault();
                 window.history.back();
+            }
+        });
+
+        // Update button onclick
+        document.addEventListener('DOMContentLoaded', function() {
+            const printBtn = document.getElementById('print-btn');
+            if (printBtn) {
+                printBtn.onclick = function(e) {
+                    e.preventDefault();
+                    smartPrint();
+                };
             }
         });
 
@@ -338,7 +724,7 @@
         // Auto print option (uncomment if needed)
         // window.addEventListener('load', function() {
         //     if (confirm('Cetak struk sekarang?')) {
-        //         window.print();
+        //         smartPrint();
         //     }
         // });
     </script>
