@@ -1,0 +1,58 @@
+# Nama workflow ini — bebas kamu ganti
+name: 🚀 Deploy Development to Jagoan Hosting
+
+# Kapan workflow ini jalan?
+# → Setiap kali kamu push ke branch "development"
+on:
+  push:
+    branches:
+      - development # Triger otomatis saat ada push ke branch development
+
+jobs:
+  deploy:
+    name: Deploy Laravel
+    runs-on: ubuntu-latest # GitHub menyediakan komputer sementara untuk menjalankan ini
+
+    steps:
+      # Step 1: Ambil kode dari GitHub
+      - name: 📥 Checkout kode
+        uses: actions/checkout@v4
+
+      # Step 2: Masuk ke server dan jalankan perintah deploy
+      - name: 🔐 Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          command_timeout: 30m
+
+          script: |
+            # 1. Pindah ke folder project
+            cd ~/pos.kasir.hanifcahyo.my.id
+
+            # 2. Tarik kode terbaru dari branch development
+            echo "⬇️ Pulling latest code..."
+            git fetch origin development
+            git reset --hard origin/development
+
+            # 3. Install Dependencies (Menggunakan PHP 8.2 dan composer.phar lokal)
+            echo "📦 Installing PHP dependencies..."
+            /usr/local/bin/php composer.phar install --no-dev --optimize-autoloader
+
+            # 4. Database Migration
+            echo "🗄️ Running database migrations..."
+            /usr/local/bin/php artisan migrate --force
+
+            # 5. Optimasi Cache
+            echo "⚡ Clearing and rebuilding cache..."
+            /usr/local/bin/php artisan config:cache
+            /usr/local/bin/php artisan route:cache
+            /usr/local/bin/php artisan view:cache
+
+            # 6. Atur Permission (Agar storage bisa ditulis/upload)
+            echo "🔒 Setting permissions..."
+            chmod -R 775 storage bootstrap/cache
+
+            echo "✅ DEPLOY SUCCESSFUL!"
