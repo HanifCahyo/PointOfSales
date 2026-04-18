@@ -1,58 +1,74 @@
-# Nama workflow ini — bebas kamu ganti
-name: 🚀 Deploy Development to Jagoan Hosting
+name: Deploy ke Hosting (SSH + Sync Build)
 
-# Kapan workflow ini jalan?
-# → Setiap kali kamu push ke branch "development"
 on:
   push:
     branches:
-      - development # Triger otomatis saat ada push ke branch development
+      - development
 
 jobs:
-  deploy:
-    name: Deploy Laravel
-    runs-on: ubuntu-latest # GitHub menyediakan komputer sementara untuk menjalankan ini
+  build-and-deploy:
+    runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Ambil kode dari GitHub
-      - name: 📥 Checkout kode
+      - name: Checkout kode
         uses: actions/checkout@v4
 
-      # Step 2: Masuk ke server dan jalankan perintah deploy
-      - name: 🔐 Deploy via SSH
+      # --- STEP FRONTEND (Dikerjakan di komputer GitHub) ---
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build Frontend
+        run: |
+          cp .env.example .env
+          npm install
+          npm run build
+
+      # --- STEP DEPLOY (Kirim kode + Hasil Build ke Hosting) ---
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          command_timeout: 30m
-
           script: |
-            # 1. Pindah ke folder project
             cd ~/pos.kasir.hanifcahyo.my.id
 
-            # 2. Tarik kode terbaru dari branch development
-            echo "⬇️ Pulling latest code..."
+            # Ambil kode backend terbaru
             git fetch origin development
             git reset --hard origin/development
 
-            # 3. Install Dependencies (Menggunakan PHP 8.2 dan composer.phar lokal)
-            echo "📦 Installing PHP dependencies..."
+            # Update dependencies backend
             /usr/local/bin/php composer.phar install --no-dev --optimize-autoloader
 
-            # 4. Database Migration
-            echo "🗄️ Running database migrations..."
+            # Jalankan migrasi
             /usr/local/bin/php artisan migrate --force
 
-            # 5. Optimasi Cache
-            echo "⚡ Clearing and rebuilding cache..."
+      # --- STEP SYNC BUILD (Kirim folder public/build saja) ---
+      - name: Sync Build Folder to Hosting
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "public/build"
+          target: "~/pos.kasir.hanifcahyo.my.id"
+          overwrite: true
+
+      - name: Finalize (Clear Cache)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd ~/pos.kasir.hanifcahyo.my.id
             /usr/local/bin/php artisan config:cache
             /usr/local/bin/php artisan route:cache
             /usr/local/bin/php artisan view:cache
-
-            # 6. Atur Permission (Agar storage bisa ditulis/upload)
-            echo "🔒 Setting permissions..."
-            chmod -R 775 storage bootstrap/cache
-
-            echo "✅ DEPLOY SUCCESSFUL!"
+            # Baris pengaman tambahan:
+            chmod -R 775 storage bootstrap/cache public/build
