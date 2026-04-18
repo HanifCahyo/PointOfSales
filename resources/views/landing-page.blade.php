@@ -66,10 +66,14 @@
                 <div class="space-y-4">
                     @if (Route::has('login'))
                         @auth
-                            <a href="{{ url('/admin/dashboard') }}"
+                            <a href="{{ match (auth()->user()->role) {
+                                'admin' => route('admin.dashboard'),
+                                'kasir' => route('kasir.dashboard'),
+                                default => url('/'),
+                            } }}"
                                 class="inline-flex items-center px-8 py-4 font-semibold text-white transition-colors duration-200 bg-blue-600 shadow-lg hover:bg-blue-700 rounded-xl hover:shadow-xl">
                                 <i class="mr-3 fas fa-tachometer-alt"></i>
-                                Ke Dashboard
+                                Dashboard
                             </a>
                         @else
                             <a href="{{ route('login') }}"
